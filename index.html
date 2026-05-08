@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Excel Extractor</title>
+
+    <!-- XLSX Library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 450px;
+            text-align: center;
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        input {
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>Excel Extractor</h1>
+
+        <p>
+            Extract unique values from Column E & Column M
+        </p>
+
+        <input type="file" id="excelFile" accept=".xlsx,.xls">
+
+        <br>
+
+        <button onclick="extractColumns()">
+      Generate Excel
+    </button>
+
+    </div>
+
+    <script>
+        function extractColumns() {
+
+            const fileInput = document.getElementById('excelFile');
+
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please upload an Excel file.");
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+
+                const data = new Uint8Array(e.target.result);
+
+                const workbook = XLSX.read(data, {
+                    type: 'array'
+                });
+
+                const sheetName = workbook.SheetNames[0];
+
+                const worksheet = workbook.Sheets[sheetName];
+
+                // Convert sheet into rows
+                const rows = XLSX.utils.sheet_to_json(worksheet, {
+                    header: 1
+                });
+
+                /*
+                  Column E = index 4
+                  Column M = index 12
+                */
+
+                const uniqueData = new Set();
+
+                const extractedData = [];
+
+                // Add header row
+                extractedData.push([
+                    "Client Name",
+                    "VC ID",
+                    "Transaction Date",
+                    "Grand Total",
+
+                ]);
+                //const clm1 = 2;
+                //let clm2 = 0;
+
+                // Skip original header
+                for (let i = 1; i < rows.length; i++) {
+
+                    const row = rows[i];
+
+                    const columnE = row[4] || "";
+
+                    const columnM = row[12] || "";
+
+                    const columnC = row[2] || "";
+
+                    const columnF = "";
+
+
+
+                    // Ignore fully empty rows
+                    if (columnE === "" && columnM === "" && columnC === "") {
+                        continue;
+                    }
+                    // Create unique key
+                    //const uniqueKey = columnE + "|" + columnM + "|" + columnC;
+                    const uniqueKey = columnE;
+
+
+                    // Avoid duplicates
+                    if (!uniqueData.has(uniqueKey)) {
+
+                        uniqueData.add(uniqueKey);
+
+                        var A = String(columnM).split("'").pop().toString();
+                        var B = String(columnE).split("'").pop().toString();
+
+                        extractedData.push([
+                            columnC,
+                            B,
+                            A,
+                            columnF
+                            //columnM
+
+                        ]);
+                    }
+                    clm2 = i;
+                }
+                clm2 = extractedData.length;
+                const grndTl = "=SUM(D2:D" + clm2 + ")";
+                extractedData.push([
+                    "",
+                    "",
+                    "",
+                    grndTl
+                    //columnM
+
+                ]);
+                // Create worksheet
+                const newWorksheet = XLSX.utils.aoa_to_sheet(extractedData);
+
+                // Create workbook
+                const newWorkbook = XLSX.utils.book_new();
+
+                XLSX.utils.book_append_sheet(
+                    newWorkbook,
+                    newWorksheet,
+                    "Extracted_Data"
+                );
+
+                // Download file
+                XLSX.writeFile(
+                    newWorkbook,
+                    "Unique_Extracted_Data.xlsx"
+                );
+
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+
+</body>
+
+</html>
